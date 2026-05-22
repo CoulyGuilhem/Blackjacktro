@@ -207,8 +207,13 @@ const Renderer = (() => {
     const spot = new THREE.SpotLight(0xfff5d0, 2.5, 25, Math.PI/4, 0.4);
     spot.position.set(0,12,3); spot.castShadow = true; spot.shadow.mapSize.set(2048,2048);
     scene.add(spot); scene.add(spot.target);
-    scene.add(Object.assign(new THREE.PointLight(0xc9a84c, 0.8, 15), { position: new THREE.Vector3(-5,3,0) }));
-    scene.add(Object.assign(new THREE.PointLight(0xc9a84c, 0.8, 15), { position: new THREE.Vector3(5,3,0) }));
+    const leftLight = new THREE.PointLight(0xc9a84c, 0.8, 15);
+	leftLight.position.set(-5, 3, 0);
+	scene.add(leftLight);
+
+	const rightLight = new THREE.PointLight(0xc9a84c, 0.8, 15);
+	rightLight.position.set(5, 3, 0);
+	scene.add(rightLight);
   }
 
   function _buildParticles() {
