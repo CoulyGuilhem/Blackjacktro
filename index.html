@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BlackJack — Édition Balatro</title>
+<link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+
+<canvas id="three-canvas"></canvas>
+
+<div id="ui-overlay">
+  <div id="top-bar">
+    <div class="stat-block">
+      <div class="stat-label">Solde</div>
+      <div class="stat-value" id="balance-display">$1000</div>
+    </div>
+    <div id="title-center">
+      <div id="game-title">BlackJack</div>
+      <div id="game-subtitle">ÉDITION BALATRO</div>
+    </div>
+    <div class="stat-block">
+      <div class="stat-label">Mise</div>
+      <div class="stat-value" id="bet-display">$0</div>
+    </div>
+  </div>
+
+  <div style="display:flex;justify-content:center;pointer-events:all;">
+    <div id="round-panel">
+      <div id="round-panel-top">
+        <span id="round-label">ROUND <span id="round-num">1</span></span>
+        <span id="round-title">Cible : <span id="target-score">$3 000</span></span>
+      </div>
+      <div id="score-progress-wrap">
+        <div id="score-progress-bar"></div>
+        <div id="score-progress-text">$0 / $3 000</div>
+      </div>
+      <div id="hands-row">
+        <span id="hands-label">MAINS RESTANTES</span>
+        <div id="hands-pips"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="bottom-panel">
+    <div id="bet-panel">
+      <div class="panel-title">Mise</div>
+      <div id="current-bet-display">0</div>
+      <div class="chip-row">
+        <div class="chip chip-5"   onclick="View.addBet(5)">5</div>
+        <div class="chip chip-10"  onclick="View.addBet(10)">10</div>
+        <div class="chip chip-25"  onclick="View.addBet(25)">25</div>
+        <div class="chip chip-50"  onclick="View.addBet(50)">50</div>
+        <div class="chip chip-100" onclick="View.addBet(100)">100</div>
+      </div>
+      <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="btn btn-clear" onclick="View.clearBet()">Effacer</button>
+        <button class="btn btn-pay" id="btn-pay" onclick="Controller.payRound()" style="display:none">PASSER</button>
+      </div>
+    </div>
+
+    <div id="action-panel">
+      <div class="action-row" id="deal-row">
+        <button class="btn btn-deal" id="btn-deal" onclick="Controller.deal()">DISTRIBUER</button>
+      </div>
+      <div class="action-row hidden" id="play-buttons">
+        <button class="btn btn-hit"     id="btn-hit"     onclick="Controller.hit()">TIRER</button>
+        <button class="btn btn-stand"   id="btn-stand"   onclick="Controller.stand()">RESTER</button>
+        <button class="btn btn-double"  id="btn-double"  onclick="Controller.doubleDown()">DOUBLER</button>
+        <button class="btn btn-discard" id="btn-discard" onclick="Controller.activateDiscard()">DÉFAUSSER</button>
+      </div>
+      <div class="action-row hidden" id="bust-choice">
+        <button class="btn btn-discard" onclick="Controller.activateDiscard()">DÉFAUSSER UNE CARTE</button>
+        <button class="btn btn-bust-ok" onclick="Controller.confirmBust()">ACCEPTER LE BUST</button>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end;">
+      <div id="discard-panel">
+        <div class="panel-title">Défausses</div>
+        <div id="discard-pips"></div>
+        <div id="discard-hint">par round</div>
+      </div>
+      <div id="stats-panel">
+        <div class="stats-title">Stats</div>
+        <div class="stat-row"><span class="stat-row-label">Mains</span><span class="stat-row-value" id="stat-games">0</span></div>
+        <div class="stat-row"><span class="stat-row-label">Victoires</span><span class="stat-row-value" id="stat-wins">0</span></div>
+        <div class="stat-row"><span class="stat-row-label">Win rate</span><span class="stat-row-value" id="stat-winrate">0%</span></div>
+        <div class="streak-display">
+          <div class="streak-value" id="stat-streak">0</div>
+          <div class="streak-label">SÉRIE</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="dealer-score-display">
+  <div class="score-label">CROUPIER</div>
+  <div class="hand-score" id="dealer-score"></div>
+  <div style="font-size:9px;letter-spacing:2px;color:#2980b9;margin-top:2px;min-height:14px" id="dealer-threshold"></div>
+</div>
+<div id="score-display">
+  <div class="hand-score" id="player-score"></div>
+  <div class="hand-name" id="hand-name"></div>
+  <div class="score-label">VOTRE MAIN</div>
+</div>
+
+<div id="deck-counter">
+  <div class="deck-count" id="deck-count">52</div>
+  <div class="deck-label">Cartes</div>
+</div>
+
+<div id="multiplier-bar">
+  <div class="mult-chip" id="mult-blackjack"><div class="mult-name">BLACKJACK</div><div class="mult-val">x1.5</div></div>
+  <div class="mult-chip" id="mult-21"><div class="mult-name">21 EXACT</div><div class="mult-val">x1.2</div></div>
+  <div class="mult-chip" id="mult-5cards"><div class="mult-name">5 CARTES</div><div class="mult-val">x2.0</div></div>
+</div>
+
+<div id="effects-bar">
+  <div class="effect-badge glass"    id="badge-glass">VERRE</div>
+  <div class="effect-badge shiny"    id="badge-shiny">BRILLANT</div>
+  <div class="effect-badge negative" id="badge-negative">NEGATIF</div>
+  <div class="effect-badge gold-fx"  id="badge-gold">OR</div>
+  <div class="effect-badge multi"    id="badge-multi">MULTI</div>
+</div>
+
+<div id="message-overlay">
+  <div class="message-text win" id="message-text">VICTOIRE</div>
+  <div class="message-sub" id="message-sub">+$100</div>
+</div>
+
+<div id="discard-mode-banner">
+  <div class="banner-title">Choisissez une carte a defausser</div>
+  <div class="banner-sub">CLIQUEZ SUR LA CARTE A RETIRER</div>
+</div>
+
+<div id="gameover-overlay">
+  <div class="go-title">GAME OVER</div>
+  <div class="go-sub">PLUS DE MAINS NI DE RESSOURCES</div>
+  <div class="go-stats" id="go-stats"></div>
+  <button class="btn btn-restart" onclick="Controller.restart()">RECOMMENCER</button>
+</div>
+
+<div id="roundwin-overlay">
+  <div class="rw-title">ROUND VALIDE !</div>
+  <div class="rw-round" id="rw-round">ROUND 1 TERMINE</div>
+  <div class="rw-target" id="rw-target">Objectif atteint : $3 000</div>
+  <button class="btn btn-next" onclick="Controller.nextRound()">ROUND SUIVANT</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="js/cards.js"></script>
+<script src="js/model.js"></script>
+<script src="js/renderer.js"></script>
+<script src="js/view.js"></script>
+<script src="js/controller.js"></script>
+<script src="js/main.js"></script>
+
+</body>
+</html>
