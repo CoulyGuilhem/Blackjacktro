@@ -11,7 +11,7 @@ const Model = (() => {
   const DISCARDS_PER_ROUND = 4;
   const BASE_TARGET = 3000;
 
-  function roundTarget(r) { return BASE_TARGET + (r-1)*2000; }
+  function roundTarget(r) { return Math.floor(BASE_TARGET * Math.pow(1.8, r-1)); }
 
   function createDeck() {
     const d = [];
