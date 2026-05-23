@@ -49,6 +49,7 @@ const Model = (() => {
     discardsLeft: DISCARDS_PER_ROUND,
     // Stats
     stats: { games: 0, wins: 0, streak: 0 },
+    handHistory: [],
     // Discard mode flag (managed by Controller)
     discardMode: false,
   };
@@ -121,33 +122,49 @@ const Model = (() => {
 
   // ── Result ────────────────────────────────────────────────────────────
   function getResult() {
-    const pScore = handValue(state.playerHand);
-    const dScore = handValue(state.dealerHand);
-    const mult   = Cards.computeMultiplier(state.playerHand);
+    const pScore    = handValue(state.playerHand);
+    const dScore    = handValue(state.dealerHand);
     const goldBonus = Cards.computeGoldBonus(state.playerHand, state.dealerHand, state.bet);
+    const sideBets  = Cards.evaluateSideBets(state.playerHand);
 
-    let result, payout;
+    // Each multiplier stacks MULTIPLICATIVELY on the profit only
+    // shiny: ×1.5 per shiny card in hand
+    const shinyMult = Math.pow(1.5, state.playerHand.filter(c => c.effect === 'shiny').length);
+    // side bets: product of all triggered side bet multipliers
+    const sideMult  = Cards.computeSideBetMultiplier(state.playerHand);
+
+    let result, payout, profitMult;
 
     if (isBust(state.playerHand)) {
-      result = 'lose'; payout = 0;
+      result = 'lose'; payout = 0; profitMult = 0;
+
     } else if (isBlackjack(state.playerHand) && isBlackjack(state.dealerHand)) {
-      result = 'push'; payout = state.bet;
+      result = 'push'; payout = state.bet; profitMult = 0;
+
     } else if (isBlackjack(state.playerHand)) {
+      // Blackjack base profit = 1.5× bet, then all mults apply to that profit
+      profitMult = 1.5 * shinyMult * sideMult;
       result = 'blackjack';
-      payout = state.bet + Math.floor(state.bet * 1.5 * mult) + goldBonus;
+      payout = state.bet + Math.floor(state.bet * profitMult) + goldBonus;
+
     } else if (isBust(state.dealerHand) || pScore > dScore) {
+      // Win: profit = 1× bet, then mults apply
+      profitMult = 1.0 * shinyMult * sideMult;
       result = 'win';
-      payout = Math.floor(state.bet * 2 * mult) + goldBonus;
+      payout = state.bet + Math.floor(state.bet * profitMult) + goldBonus;
+
     } else if (pScore === dScore) {
-      result = 'push'; payout = state.bet + goldBonus;
+      result = 'push'; payout = state.bet + goldBonus; profitMult = 0;
+
     } else {
-      result = 'lose'; payout = 0;
+      result = 'lose'; payout = 0; profitMult = 0;
     }
 
-    return { result, payout, mult, goldBonus, pScore, dScore };
+    const mult = parseFloat((shinyMult * sideMult).toFixed(2));
+    return { result, payout, mult, profitMult: parseFloat(profitMult.toFixed(2)), goldBonus, pScore, dScore, sideBets, shinyMult, sideMult };
   }
 
-  function applyResult(payout, result) {
+  function applyResult(payout, result, extra = {}) {
     state.balance += payout;
     state.stats.games++;
     if (result === 'win' || result === 'blackjack') {
@@ -159,6 +176,24 @@ const Model = (() => {
     } else {
       state.stats.streak = 0;
     }
+    // Record in hand history
+    state.handHistory.push({
+      round:       state.round,
+      bet:         state.bet,
+      payout,
+      profit:      result === 'lose' ? -state.bet : payout - state.bet,
+      result,
+      mult:        extra.mult        || 1,
+      profitMult:  extra.profitMult  || 0,
+      sideBets:    extra.sideBets    || [],
+      shinyMult:   extra.shinyMult   || 1,
+      sideMult:    extra.sideMult    || 1,
+      goldBonus:   extra.goldBonus   || 0,
+      pScore:      extra.pScore      || 0,
+      dScore:      extra.dScore      || 0,
+      playerCards: state.playerHand.map(c => ({ rank:c.rank, suit:c.suit, effect:c.effect, style:c.style })),
+      dealerCards: state.dealerHand.map(c => ({ rank:c.rank, suit:c.suit, faceUp:c.faceUp })),
+    });
     state.bet = 0;
     state.phase = 'betting';
   }
@@ -218,6 +253,7 @@ const Model = (() => {
     state.handsLeft  = HANDS_PER_ROUND;
     state.discardsLeft = DISCARDS_PER_ROUND;
     state.stats      = { games:0, wins:0, streak:0 };
+    state.handHistory = [];
     state.playerHand = [];
     state.dealerHand = [];
     refillDeck();
