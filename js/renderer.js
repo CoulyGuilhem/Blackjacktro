@@ -2,7 +2,7 @@
 //  RENDERER — Three.js scene, card meshes, animations, hover tooltip
 // ============================================================
 
-const Renderer = (() => {
+const Renderer = window.Renderer = (() => {
   let scene, camera, renderer;
   const cardMeshes = { player: [], dealer: [] };
   let particles = [];
