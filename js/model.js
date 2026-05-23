@@ -2,7 +2,7 @@
 //  MODEL — Game state, deck management, round system
 // ============================================================
 
-const Model = (() => {
+const Model = window.Model = (() => {
   const SUITS = ['♠','♥','♦','♣'];
   const RANKS = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
   const RANK_VALUES = { A:11, J:10, Q:10, K:10 };
