@@ -101,6 +101,10 @@
       <span id="hands-label">MAINS</span>
       <div id="hands-pips"></div>
     </div>
+    <div style="display:flex;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid rgba(201,168,76,0.15)">
+      <button class="tab-btn" style="flex:1" onclick="View.openDeckViewer()">🃏 DECK</button>
+      <button class="tab-btn" style="flex:1" onclick="View.openHistoryPanel()">📋 RÉSUMÉ</button>
+    </div>
   </div>
 </div>
 
@@ -195,19 +199,13 @@
   <div id="history-list"></div>
 </div>
 
-<!-- Tab bar (bottom) -->
-<div id="tab-bar">
-  <button class="tab-btn" onclick="View.openDeckViewer()">🃏 MON DECK</button>
-  <button class="tab-btn" onclick="View.openHistoryPanel()">📋 RÉSUMÉ</button>
-</div>
-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="js/cards.js"></script>
-<script src="js/model.js"></script>
-<script src="js/renderer.js"></script>
-<script src="js/view.js"></script>
-<script src="js/controller.js"></script>
-<script src="js/main.js"></script>
+<script src="js/cards.js?v=3"></script>
+<script src="js/model.js?v=3"></script>
+<script src="js/renderer.js?v=3"></script>
+<script src="js/view.js?v=3"></script>
+<script src="js/controller.js?v=3"></script>
+<script src="js/main.js?v=3"></script>
 
 <!-- Build side bet chips dynamically after Cards loads -->
 <script>
