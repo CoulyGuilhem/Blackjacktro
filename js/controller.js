@@ -2,7 +2,7 @@
 //  CONTROLLER — Game flow, action orchestration
 // ============================================================
 
-const Controller = (() => {
+const Controller = window.Controller = (() => {
   let animating = false;
   let discardModeActive = false;
 
