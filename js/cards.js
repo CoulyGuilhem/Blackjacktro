@@ -2,7 +2,7 @@
 //  CARDS — Effects, Styles, Canvas Textures, Side Bets
 // ============================================================
 
-const Cards = (() => {
+const Cards = window.Cards = (() => {
 
   // ── EFFECT DEFINITIONS ──────────────────────────────────────────────
   const EFFECTS = {
