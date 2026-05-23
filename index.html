@@ -7,10 +7,10 @@
 <link rel="stylesheet" href="css/main.css">
 </head>
 <body>
-
 <canvas id="three-canvas"></canvas>
 
 <div id="ui-overlay">
+  <!-- TOP BAR -->
   <div id="top-bar">
     <div class="stat-block">
       <div class="stat-label">Solde</div>
@@ -26,24 +26,9 @@
     </div>
   </div>
 
-  <div style="display:flex;justify-content:center;pointer-events:all;">
-    <div id="round-panel">
-      <div id="round-panel-top">
-        <span id="round-label">ROUND <span id="round-num">1</span></span>
-        <span id="round-title">Cible : <span id="target-score">$3 000</span></span>
-      </div>
-      <div id="score-progress-wrap">
-        <div id="score-progress-bar"></div>
-        <div id="score-progress-text">$0 / $3 000</div>
-      </div>
-      <div id="hands-row">
-        <span id="hands-label">MAINS RESTANTES</span>
-        <div id="hands-pips"></div>
-      </div>
-    </div>
-  </div>
-
+  <!-- BOTTOM PANEL -->
   <div id="bottom-panel">
+    <!-- Bet -->
     <div id="bet-panel">
       <div class="panel-title">Mise</div>
       <div id="current-bet-display">0</div>
@@ -60,6 +45,7 @@
       </div>
     </div>
 
+    <!-- Actions -->
     <div id="action-panel">
       <div class="action-row" id="deal-row">
         <button class="btn btn-deal" id="btn-deal" onclick="Controller.deal()">DISTRIBUER</button>
@@ -71,11 +57,12 @@
         <button class="btn btn-discard" id="btn-discard" onclick="Controller.activateDiscard()">DÉFAUSSER</button>
       </div>
       <div class="action-row hidden" id="bust-choice">
-        <button class="btn btn-discard" onclick="Controller.activateDiscard()">DÉFAUSSER UNE CARTE</button>
-        <button class="btn btn-bust-ok" onclick="Controller.confirmBust()">ACCEPTER LE BUST</button>
+        <button class="btn btn-discard" onclick="Controller.activateDiscard()">DÉFAUSSER</button>
+        <button class="btn btn-bust-ok" onclick="Controller.confirmBust()">ACCEPTER BUST</button>
       </div>
     </div>
 
+    <!-- Right -->
     <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end;">
       <div id="discard-panel">
         <div class="panel-title">Défausses</div>
@@ -96,10 +83,50 @@
   </div>
 </div>
 
+<!-- ROUND PANEL — left side floating -->
+<div id="round-panel-wrapper">
+  <div id="round-panel">
+    <div id="round-panel-top">
+      <span id="round-label">ROUND <span id="round-num">1</span></span>
+    </div>
+    <div id="target-row">
+      <span class="target-label">OBJECTIF</span>
+      <span class="target-value" id="target-score">$3 000</span>
+    </div>
+    <div id="score-progress-wrap" style="margin-top:8px;">
+      <div id="score-progress-bar"></div>
+      <div id="score-progress-text">$0 / $3 000</div>
+    </div>
+    <div id="hands-row" style="margin-top:8px;">
+      <span id="hands-label">MAINS</span>
+      <div id="hands-pips"></div>
+    </div>
+  </div>
+</div>
+
+<!-- BASE MULTIPLIERS top-right -->
+<div id="mult-bar-top">
+  <div class="mult-chip" id="mult-blackjack"><div class="mult-name">BLACKJACK</div><div class="mult-val">×1.5</div></div>
+  <div class="mult-chip" id="mult-21"><div class="mult-name">21 EXACT</div><div class="mult-val">×1.2</div></div>
+  <div class="mult-chip" id="mult-5cards"><div class="mult-name">5 CARTES</div><div class="mult-val">×2.0</div></div>
+</div>
+
+<!-- SIDE BETS right side -->
+<div id="side-bets-panel">
+  <div id="side-bets-label">BONUS</div>
+</div>
+
+<!-- Deck counter -->
+<div id="deck-counter">
+  <div class="deck-count" id="deck-count">52</div>
+  <div class="deck-label">Cartes</div>
+</div>
+
+<!-- Score displays -->
 <div id="dealer-score-display">
   <div class="score-label">CROUPIER</div>
   <div class="hand-score" id="dealer-score"></div>
-  <div style="font-size:9px;letter-spacing:2px;color:#2980b9;margin-top:2px;min-height:14px" id="dealer-threshold"></div>
+  <div style="font-size:9px;letter-spacing:2px;color:#2980b9;margin-top:2px;min-height:13px" id="dealer-threshold"></div>
 </div>
 <div id="score-display">
   <div class="hand-score" id="player-score"></div>
@@ -107,35 +134,39 @@
   <div class="score-label">VOTRE MAIN</div>
 </div>
 
-<div id="deck-counter">
-  <div class="deck-count" id="deck-count">52</div>
-  <div class="deck-label">Cartes</div>
-</div>
-
-<div id="multiplier-bar">
-  <div class="mult-chip" id="mult-blackjack"><div class="mult-name">BLACKJACK</div><div class="mult-val">x1.5</div></div>
-  <div class="mult-chip" id="mult-21"><div class="mult-name">21 EXACT</div><div class="mult-val">x1.2</div></div>
-  <div class="mult-chip" id="mult-5cards"><div class="mult-name">5 CARTES</div><div class="mult-val">x2.0</div></div>
-</div>
-
+<!-- Effects bar -->
 <div id="effects-bar">
-  <div class="effect-badge glass"    id="badge-glass">VERRE</div>
-  <div class="effect-badge shiny"    id="badge-shiny">BRILLANT</div>
-  <div class="effect-badge negative" id="badge-negative">NEGATIF</div>
-  <div class="effect-badge gold-fx"  id="badge-gold">OR</div>
-  <div class="effect-badge multi"    id="badge-multi">MULTI</div>
+  <div class="effect-badge glass"    id="badge-glass">◈ VERRE</div>
+  <div class="effect-badge shiny"    id="badge-shiny">✦ BRILLANT</div>
+  <div class="effect-badge negative" id="badge-negative">⊖ NÉGATIF</div>
+  <div class="effect-badge gold-fx"  id="badge-gold">◉ OR</div>
+  <div class="effect-badge multi"    id="badge-multi">❋ MULTI</div>
 </div>
 
+<!-- Card tooltip -->
+<div id="card-tooltip">
+  <canvas id="tooltip-card-canvas" width="160" height="240"></canvas>
+  <div id="tooltip-info">
+    <div id="tooltip-card-name"></div>
+    <div id="tooltip-card-value"></div>
+    <div id="tooltip-effect"></div>
+    <div id="tooltip-style"></div>
+  </div>
+</div>
+
+<!-- Message -->
 <div id="message-overlay">
   <div class="message-text win" id="message-text">VICTOIRE</div>
   <div class="message-sub" id="message-sub">+$100</div>
 </div>
 
+<!-- Discard banner -->
 <div id="discard-mode-banner">
-  <div class="banner-title">Choisissez une carte a defausser</div>
-  <div class="banner-sub">CLIQUEZ SUR LA CARTE A RETIRER</div>
+  <div class="banner-title">Choisissez une carte à défausser</div>
+  <div class="banner-sub">CLIQUEZ SUR LA CARTE À RETIRER</div>
 </div>
 
+<!-- Game Over -->
 <div id="gameover-overlay">
   <div class="go-title">GAME OVER</div>
   <div class="go-sub">PLUS DE MAINS NI DE RESSOURCES</div>
@@ -143,11 +174,12 @@
   <button class="btn btn-restart" onclick="Controller.restart()">RECOMMENCER</button>
 </div>
 
+<!-- Round Win -->
 <div id="roundwin-overlay">
-  <div class="rw-title">ROUND VALIDE !</div>
-  <div class="rw-round" id="rw-round">ROUND 1 TERMINE</div>
-  <div class="rw-target" id="rw-target">Objectif atteint : $3 000</div>
-  <button class="btn btn-next" onclick="Controller.nextRound()">ROUND SUIVANT</button>
+  <div class="rw-title">ROUND VALIDÉ !</div>
+  <div class="rw-round" id="rw-round">ROUND 1 TERMINÉ</div>
+  <div class="rw-target" id="rw-target">Objectif atteint</div>
+  <button class="btn btn-next" onclick="Controller.nextRound()">ROUND SUIVANT →</button>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -158,5 +190,24 @@
 <script src="js/controller.js"></script>
 <script src="js/main.js"></script>
 
+<!-- Build side bet chips dynamically after Cards loads -->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const panel = document.getElementById('side-bets-panel');
+  Object.entries(Cards.SIDE_BETS).forEach(([id, bet]) => {
+    const chip = document.createElement('div');
+    chip.className = 'sidebet-chip';
+    chip.id = 'sidebet-' + id;
+    chip.style.color = bet.color;
+    chip.innerHTML = `
+      <span class="sb-icon">${bet.icon}</span>
+      <span class="sb-label">${bet.label}</span>
+      <span class="sb-mult">×${bet.mult}</span>
+      <div class="sidebet-tooltip"><p>${bet.desc}</p></div>
+    `;
+    panel.appendChild(chip);
+  });
+});
+</script>
 </body>
 </html>
