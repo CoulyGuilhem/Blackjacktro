@@ -182,6 +182,25 @@
   <button class="btn btn-next" onclick="Controller.nextRound()">ROUND SUIVANT →</button>
 </div>
 
+
+<!-- History Panel -->
+<div id="history-panel">
+  <div id="history-header">
+    <div>
+      <h2>Résumé des mains</h2>
+      <div style="font-size:8px;letter-spacing:3px;color:var(--gold-dark);margin-top:2px">HISTORIQUE COMPLET</div>
+    </div>
+    <button class="btn btn-clear" onclick="View.closeHistoryPanel()">FERMER</button>
+  </div>
+  <div id="history-list"></div>
+</div>
+
+<!-- Tab bar (bottom) -->
+<div id="tab-bar">
+  <button class="tab-btn" onclick="View.openDeckViewer()">🃏 MON DECK</button>
+  <button class="tab-btn" onclick="View.openHistoryPanel()">📋 RÉSUMÉ</button>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="js/cards.js"></script>
 <script src="js/model.js"></script>
