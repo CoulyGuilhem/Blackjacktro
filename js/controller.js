@@ -66,13 +66,19 @@ const Controller = (() => {
     const i = state.playerHand.length - 1;
     const newCard = state.playerHand[i];
 
-    // Multi effect: auto-offer free discard
     if (newCard.effect === 'multi') {
       View.floatText('❋ MULTI — DÉFAUSSE GRATUITE !', '#c39bd3', '50%', '42%');
     }
 
     Renderer.dealCard(newCard, i, state.playerHand.length, false);
     Renderer.repositionCards();
+
+    // If newly drawn card is glass, reveal dealer hidden card
+    const glassCard = Model.getGlassReveal();
+    if (glassCard && newCard.effect === 'glass') {
+      setTimeout(() => Renderer.updateGlassReveal(0, glassCard), 500);
+      View.showGlassReveal(glassCard);
+    }
 
     setTimeout(() => {
       setAnimating(false);
@@ -228,9 +234,10 @@ const Controller = (() => {
 
   // ── RESOLVE ROUND ────────────────────────────────────────────────────
   function _resolveRound() {
-    const { result, payout, mult, goldBonus, pScore, dScore } = Model.getResult();
+    const resultData = Model.getResult();
+    const { result, payout, mult, profitMult, goldBonus, pScore, dScore, sideBets, shinyMult, sideMult } = resultData;
     const bet = Model.get().bet;
-    Model.applyResult(payout, result);
+    Model.applyResult(payout, result, resultData);
 
     const MSGS = {
       blackjack: ['BLACKJACK !', 'blackjack'],
@@ -239,10 +246,22 @@ const Controller = (() => {
       push:      ['ÉGALITÉ',    'push'],
     };
     const [msg, type] = MSGS[result];
-    let sub = result === 'push' ? 'Mise remboursée'
-            : result === 'lose' ? `-$${bet}`
-            : `+$${payout}`;
-    if (goldBonus > 0) sub += `  (dont +$${goldBonus} or)`;
+
+    // Build detailed sub-line showing multiplier breakdown
+    let sub = '';
+    if (result === 'lose') {
+      sub = `-$${bet}`;
+    } else if (result === 'push') {
+      sub = 'Mise remboursée';
+    } else {
+      sub = `+$${payout}`;
+      const parts = [];
+      if (shinyMult > 1) parts.push(`✦×${parseFloat(shinyMult.toFixed(2))}`);
+      if (sideMult > 1)  parts.push(`🎲×${parseFloat(sideMult.toFixed(2))}`);
+      if (goldBonus > 0) parts.push(`◉+$${goldBonus}`);
+      if (parts.length)  sub += `  (${parts.join(' · ')})`;
+    }
+
     View.showMessage(msg, type, sub);
     View.floatText(
       (result === 'lose' ? '-' : '+') + '$' + (result === 'lose' ? bet : payout),
@@ -254,14 +273,8 @@ const Controller = (() => {
       Renderer.winBurst(result === 'blackjack' ? 0xffd700 : 0xc9a84c);
     }
 
-    // Multiplier badge
-    if (mult > 1) setTimeout(() => View.floatText(`×${mult}`, '#f0d078', '56%', '40%'), 400);
-    if (goldBonus > 0) setTimeout(() => View.floatText(`◉ +$${goldBonus}`, '#f0d078', '44%', '38%'), 600);
-
-    // Detailed style notice
-    const detailed = Model.get().playerHand ? 0 : 0; // already applied in model
-    const thresh = Model.dealerThreshold();
-    if (thresh < 17) View.floatText(`◎ Croupier ≤ ${thresh}`, '#2980b9', '50%', '35%');
+    if (profitMult > 1) setTimeout(() => View.floatText(`×${profitMult}`, '#f0d078', '56%', '40%'), 400);
+    if (goldBonus > 0)  setTimeout(() => View.floatText(`◉ +$${goldBonus}`, '#f0d078', '44%', '38%'), 600);
 
     setTimeout(() => {
       Renderer.clearCards(() => {
