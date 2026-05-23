@@ -22,7 +22,7 @@ const Cards = (() => {
 
   // ── SIDE BET DEFINITIONS (bonus multipliers for hand patterns) ───────
   const SIDE_BETS = {
-    flush3:     { id:'flush3',     label:'FLUSH',       icon:'♥♥♥', color:'#e74c3c', mult:1.5,  desc:'3+ cartes de la même couleur (rouge ou noir)' },
+    flush3:     { id:'flush3',     label:'FLUSH',       icon:'♥♥♥', color:'#e74c3c', mult:1.5,  desc:'3+ cartes du même symbole (♠, ♥, ♦ ou ♣)' },
     straight3:  { id:'straight3',  label:'SUITE',       icon:'5-6-7', color:'#3498db', mult:1.8,  desc:'3 cartes consécutives (ex: 7-8-9)' },
     threeofkind:{ id:'threeofkind',label:'BRELAN',      icon:'777', color:'#9b59b6', mult:2.5,  desc:'3 cartes de même valeur' },
     sevenset:   { id:'sevenset',   label:'TRIPLE 7',    icon:'777', color:'#f0d078', mult:4.0,  desc:'3 cartes 7 exactement' },
@@ -55,38 +55,51 @@ const Cards = (() => {
 
     const triggered = [];
 
-    // Helper: numeric rank value (A=1 or 11, J/Q/K=10)
-    const num = c => { if(c.rank==='A') return 1; if(['J','Q','K'].includes(c.rank)) return 10; return parseInt(c.rank); };
-    const sortedNums = [...faceUp].map(c => num(c)).sort((a,b)=>a-b);
-    const isRed = c => ['♥','♦'].includes(c.suit);
-    const suitSymbol = c => c.suit; // ♠♥♦♣
+    // Numeric rank for straight detection — each face card has unique value
+    const numRank = c => {
+      if (c.rank === 'A')  return 1;
+      if (c.rank === 'J')  return 11;
+      if (c.rank === 'Q')  return 12;
+      if (c.rank === 'K')  return 13;
+      return parseInt(c.rank);
+    };
 
-    // Perfect pair (same rank + same suit)
-    if (faceUp.length >= 2) {
+    // ── Perfect pair: exactly 2 cards, same rank AND same suit ──────────
+    if (faceUp.length === 2) {
       const [a,b] = faceUp;
       if (a.rank === b.rank && a.suit === b.suit) triggered.push('perfectpair');
     }
-    // Suited pair (same suit)
-    if (faceUp.length >= 2 && faceUp[0].suit === faceUp[1].suit && faceUp[0].rank === faceUp[1].rank) {
-      // already perfect pair
-    } else if (faceUp.length >= 2 && faceUp[0].suit === faceUp[1].suit) {
-      triggered.push('suitedpair');
+
+    // ── Suited pair: exactly 2 cards, same suit (different rank) ────────
+    // Requires EXACTLY the first two cards (the hand's initial 2)
+    if (faceUp.length >= 2) {
+      const first2 = faceUp.slice(0, 2);
+      const sameSuit = first2.every(c => c.suit === first2[0].suit);
+      const sameRank = first2.every(c => c.rank === first2[0].rank);
+      if (sameSuit && !sameRank) triggered.push('suitedpair');
+      if (sameSuit && sameRank)  triggered.push('perfectpair');
     }
 
-    // Flush (3+ same color)
+    // ── Flush: 3+ cards of the exact same suit symbol ────────────────────
     if (faceUp.length >= 3) {
-      const reds = faceUp.filter(isRed).length;
-      const blacks = faceUp.filter(c=>!isRed(c)).length;
-      if (reds >= 3 || blacks >= 3) triggered.push('flush3');
+      const suitGroups = {};
+      faceUp.forEach(c => { suitGroups[c.suit] = (suitGroups[c.suit]||0)+1; });
+      if (Object.values(suitGroups).some(v => v >= 3)) triggered.push('flush3');
     }
 
-    // Straight (3 consecutive, no A high, Ace = 1)
+    // ── Straight: 3+ consecutive ranks among hand cards ─────────────────
+    // Uses unique rank values, finds longest consecutive run
     if (faceUp.length >= 3) {
-      const nums3 = sortedNums.slice(0,3);
-      if (nums3[1] === nums3[0]+1 && nums3[2] === nums3[1]+1) triggered.push('straight3');
+      const uniqueNums = [...new Set(faceUp.map(numRank))].sort((a,b)=>a-b);
+      let runLen = 1, best = 1;
+      for (let i = 1; i < uniqueNums.length; i++) {
+        runLen = uniqueNums[i] === uniqueNums[i-1]+1 ? runLen+1 : 1;
+        best = Math.max(best, runLen);
+      }
+      if (best >= 3) triggered.push('straight3');
     }
 
-    // Three of a kind
+    // ── Three of a kind: 3+ cards with same rank ────────────────────────
     if (faceUp.length >= 3) {
       const rankGroups = {};
       faceUp.forEach(c => { rankGroups[c.rank] = (rankGroups[c.rank]||0)+1; });
