@@ -1,56 +1,44 @@
 // ============================================================
-//  CARDS — Effects, Styles, Canvas Texture Generation
+//  CARDS — Effects, Styles, Canvas Textures, Side Bets
 // ============================================================
 
 const Cards = (() => {
 
   // ── EFFECT DEFINITIONS ──────────────────────────────────────────────
-  // Each card can have ONE optional effect and ONE optional style.
-  //
-  // EFFECTS (change game mechanics):
-  //   glass    → reveals dealer hidden card value
-  //   shiny    → ×1.5 multiplier on winnings per shiny card in hand
-  //   negative → card subtracts its value instead of adding (score impact)
-  //   gold     → +10% bet bonus per gold card drawn (player OR dealer)
-  //   multi    → free discard (costs no discard token)
-  //
-  // STYLES (change card rules):
-  //   retro    → player can exceed bust limit by 1pt per retro card in play
-  //   graffiti → card face value +2
-  //   detailed → reduces dealer max-play threshold by 1 per detailed card
-  //              (countered by dealer's own retro cards)
-
   const EFFECTS = {
-    glass:    { id: 'glass',    label: 'VERRE',    color: '#7ecfff', desc: 'Révèle la carte cachée du croupier' },
-    shiny:    { id: 'shiny',    label: 'BRILLANT', color: '#ff80ab', desc: '×1.5 gains par carte brillante' },
-    negative: { id: 'negative', label: 'NÉGATIF',  color: '#e74c3c', desc: 'Soustrait des points au lieu d\'en ajouter' },
-    gold:     { id: 'gold',     label: 'OR',       color: '#f0d078', desc: '+10% de la mise par carte or tirée' },
-    multi:    { id: 'multi',    label: 'MULTICOLOR',color:'#c39bd3', desc: 'Défausse gratuite (sans token)' },
+    glass:    { id:'glass',    label:'VERRE',     color:'#7ecfff', icon:'◈', desc:'Révèle la valeur de la carte cachée du croupier' },
+    shiny:    { id:'shiny',    label:'BRILLANT',  color:'#ff80ab', icon:'✦', desc:'×1.5 sur vos gains par carte brillante en main (cumulable)' },
+    negative: { id:'negative', label:'NÉGATIF',   color:'#e74c3c', icon:'⊖', desc:'Cette carte soustrait sa valeur à votre score' },
+    gold:     { id:'gold',     label:'OR',        color:'#f0d078', icon:'◉', desc:'+10% de la mise par carte or tirée (joueur + croupier)' },
+    multi:    { id:'multi',    label:'MULTICOLOR', color:'#c39bd3', icon:'❋', desc:'Défausse cette carte gratuitement sans consommer de token' },
   };
 
+  // ── STYLE DEFINITIONS ────────────────────────────────────────────────
   const STYLES = {
-    retro:    { id: 'retro',    label: 'RÉTRO',    color: '#f39c12', desc: '+1 point de tolérance de bust par carte rétro' },
-    graffiti: { id: 'graffiti', label: 'GRAFFITI', color: '#27ae60', desc: '+2 à la valeur de la carte' },
-    detailed: { id: 'detailed', label: 'DÉTAILLÉ', color: '#2980b9', desc: 'Réduit le seuil max du croupier de 1' },
+    retro:    { id:'retro',    label:'RÉTRO',    color:'#f39c12', icon:'▶', desc:'+1 point de tolérance de bust par carte rétro. Le blackjack s\'active au nouveau seuil.' },
+    graffiti: { id:'graffiti', label:'GRAFFITI', color:'#27ae60', icon:'★', desc:'+2 à la valeur de la carte (affiché et calculé)' },
+    detailed: { id:'detailed', label:'DÉTAILLÉ', color:'#2980b9', icon:'◎', desc:'Le croupier s\'arrête 1 point plus tôt par carte détaillée. Annulé par les cartes rétro du croupier.' },
   };
 
-  // Spawn probabilities (0–1). Set to 0 to disable.
-  const EFFECT_WEIGHTS = {
-    glass: 0.08, shiny: 0.10, negative: 0.08, gold: 0.09, multi: 0.07,
-    none: 0.58
+  // ── SIDE BET DEFINITIONS (bonus multipliers for hand patterns) ───────
+  const SIDE_BETS = {
+    flush3:     { id:'flush3',     label:'FLUSH',       icon:'♥♥♥', color:'#e74c3c', mult:1.5,  desc:'3+ cartes de la même couleur (rouge ou noir)' },
+    straight3:  { id:'straight3',  label:'SUITE',       icon:'5-6-7', color:'#3498db', mult:1.8,  desc:'3 cartes consécutives (ex: 7-8-9)' },
+    threeofkind:{ id:'threeofkind',label:'BRELAN',      icon:'777', color:'#9b59b6', mult:2.5,  desc:'3 cartes de même valeur' },
+    sevenset:   { id:'sevenset',   label:'TRIPLE 7',    icon:'777', color:'#f0d078', mult:4.0,  desc:'3 cartes 7 exactement' },
+    suitedpair: { id:'suitedpair', label:'PAIRE SUIT.', icon:'♠♠',  color:'#27ae60', mult:1.3,  desc:'2 cartes de même couleur ET même symbole (♠♠, ♥♥...)' },
+    perfectpair:{ id:'perfectpair',label:'PAIRE PERF.', icon:'AA',  color:'#ff80ab', mult:2.0,  desc:'2 cartes identiques (même rang ET même couleur)' },
+    coloredBJ:  { id:'coloredBJ',  label:'BJ COLORÉ',  icon:'♥A',  color:'#f0d078', mult:1.2,  desc:'Blackjack avec un As et une figure de même couleur' },
   };
-  const STYLE_WEIGHTS = {
-    retro: 0.08, graffiti: 0.10, detailed: 0.08,
-    none: 0.74
-  };
+
+  // Spawn probabilities
+  const EFFECT_WEIGHTS = { glass:0.08, shiny:0.10, negative:0.08, gold:0.09, multi:0.07, none:0.58 };
+  const STYLE_WEIGHTS  = { retro:0.08, graffiti:0.10, detailed:0.08, none:0.74 };
 
   function weightedRandom(weights) {
-    const total = Object.values(weights).reduce((a, b) => a + b, 0);
+    const total = Object.values(weights).reduce((a,b)=>a+b, 0);
     let r = Math.random() * total;
-    for (const [key, w] of Object.entries(weights)) {
-      r -= w;
-      if (r <= 0) return key === 'none' ? null : key;
-    }
+    for (const [key, w] of Object.entries(weights)) { r -= w; if (r <= 0) return key === 'none' ? null : key; }
     return null;
   }
 
@@ -60,15 +48,83 @@ const Cards = (() => {
     return card;
   }
 
-  // ── COMPUTED CARD VALUE (with style) ────────────────────────────────
+  // ── SIDE BET EVALUATION ──────────────────────────────────────────────
+  function evaluateSideBets(hand) {
+    const faceUp = hand.filter(c => c.faceUp);
+    if (faceUp.length < 2) return [];
+
+    const triggered = [];
+
+    // Helper: numeric rank value (A=1 or 11, J/Q/K=10)
+    const num = c => { if(c.rank==='A') return 1; if(['J','Q','K'].includes(c.rank)) return 10; return parseInt(c.rank); };
+    const sortedNums = [...faceUp].map(c => num(c)).sort((a,b)=>a-b);
+    const isRed = c => ['♥','♦'].includes(c.suit);
+    const suitSymbol = c => c.suit; // ♠♥♦♣
+
+    // Perfect pair (same rank + same suit)
+    if (faceUp.length >= 2) {
+      const [a,b] = faceUp;
+      if (a.rank === b.rank && a.suit === b.suit) triggered.push('perfectpair');
+    }
+    // Suited pair (same suit)
+    if (faceUp.length >= 2 && faceUp[0].suit === faceUp[1].suit && faceUp[0].rank === faceUp[1].rank) {
+      // already perfect pair
+    } else if (faceUp.length >= 2 && faceUp[0].suit === faceUp[1].suit) {
+      triggered.push('suitedpair');
+    }
+
+    // Flush (3+ same color)
+    if (faceUp.length >= 3) {
+      const reds = faceUp.filter(isRed).length;
+      const blacks = faceUp.filter(c=>!isRed(c)).length;
+      if (reds >= 3 || blacks >= 3) triggered.push('flush3');
+    }
+
+    // Straight (3 consecutive, no A high, Ace = 1)
+    if (faceUp.length >= 3) {
+      const nums3 = sortedNums.slice(0,3);
+      if (nums3[1] === nums3[0]+1 && nums3[2] === nums3[1]+1) triggered.push('straight3');
+    }
+
+    // Three of a kind
+    if (faceUp.length >= 3) {
+      const rankGroups = {};
+      faceUp.forEach(c => { rankGroups[c.rank] = (rankGroups[c.rank]||0)+1; });
+      if (Object.values(rankGroups).some(v => v >= 3)) triggered.push('threeofkind');
+    }
+
+    // Triple 7
+    if (faceUp.length >= 3 && faceUp.filter(c=>c.rank==='7').length >= 3) triggered.push('sevenset');
+
+    // Colored BJ (blackjack, ace + face same color)
+    if (faceUp.length === 2) {
+      const hasAce = faceUp.some(c=>c.rank==='A');
+      const hasFace = faceUp.some(c=>['J','Q','K','10'].includes(c.rank));
+      if (hasAce && hasFace && handValue(faceUp) === 21) {
+        const ace = faceUp.find(c=>c.rank==='A');
+        const face = faceUp.find(c=>c!==ace);
+        if (isRed(ace) === isRed(face)) triggered.push('coloredBJ');
+      }
+    }
+
+    return triggered;
+  }
+
+  function computeSideBetMultiplier(hand) {
+    const bets = evaluateSideBets(hand);
+    let mult = 1.0;
+    bets.forEach(id => { if(SIDE_BETS[id]) mult *= SIDE_BETS[id].mult; });
+    return parseFloat(mult.toFixed(2));
+  }
+
+  // ── CARD VALUE COMPUTATION ───────────────────────────────────────────
   function computeCardValue(card) {
     let val = card.value;
     if (card.style === 'graffiti') val += 2;
-    if (card.effect === 'negative') val = -Math.abs(val); // negative effect inverts
+    if (card.effect === 'negative') val = -Math.abs(val);
     return val;
   }
 
-  // ── HAND VALUE (accounting for styles & effects) ────────────────────
   function handValue(hand) {
     let val = 0, aces = 0;
     for (const c of hand) {
@@ -77,162 +133,102 @@ const Cards = (() => {
       val += cv;
       if (c.rank === 'A' && c.effect !== 'negative') aces++;
     }
-    // Reduce aces from 11→1 only while above bust threshold
-    // (bust threshold is computed separately)
     while (val > 21 && aces > 0) { val -= 10; aces--; }
     return val;
   }
 
-  // ── BUST THRESHOLD (retro style) ────────────────────────────────────
-  // Player bust threshold = 21 + (number of retro cards in hand)
   function bustThreshold(hand) {
     return 21 + hand.filter(c => c.style === 'retro' && c.faceUp).length;
   }
 
-  // Blackjack activates at bust threshold (e.g. 3 retro → BJ at 24)
-  function blackjackScore(hand) {
-    return bustThreshold(hand);
-  }
+  function blackjackScore(hand) { return bustThreshold(hand); }
+  function isBlackjack(hand)    { return hand.length === 2 && handValue(hand) === blackjackScore(hand); }
+  function isBust(hand)         { return handValue(hand) > bustThreshold(hand); }
+  function isFiveCardCharlie(hand) { return hand.length >= 5 && !isBust(hand); }
 
-  function isBlackjack(hand) {
-    return hand.length === 2 && handValue(hand) === blackjackScore(hand);
-  }
-
-  function isBust(hand) {
-    return handValue(hand) > bustThreshold(hand);
-  }
-
-  function isFiveCardCharlie(hand) {
-    return hand.length >= 5 && !isBust(hand);
-  }
-
-  // ── DEALER THRESHOLD ────────────────────────────────────────────────
-  // Dealer plays until reaching dealerThreshold (default 17).
-  // detailed cards in PLAYER hand reduce it by 1 each.
-  // Dealer's own retro cards cancel detailed effects (1 retro cancels 1 detailed).
   function dealerThreshold(playerHand, dealerHand) {
     const detailed = playerHand.filter(c => c.style === 'detailed').length;
     const dealerRetro = dealerHand.filter(c => c.style === 'retro').length;
-    const reduction = Math.max(0, detailed - dealerRetro);
-    return Math.max(12, 17 - reduction); // never below 12
+    return Math.max(12, 17 - Math.max(0, detailed - dealerRetro));
   }
 
-  // ── MULTIPLIER COMPUTATION ───────────────────────────────────────────
-  // Stacks all bonus multipliers for the round result.
-  function computeMultiplier(playerHand, baseResult) {
+  function computeMultiplier(playerHand) {
     let mult = 1.0;
-
     if (isBlackjack(playerHand)) mult *= 1.5;
     else if (isFiveCardCharlie(playerHand)) mult *= 2.0;
     else if (handValue(playerHand) === blackjackScore(playerHand)) mult *= 1.2;
-
-    // Each shiny card adds ×1.5
     const shinyCount = playerHand.filter(c => c.effect === 'shiny').length;
     if (shinyCount > 0) mult *= Math.pow(1.5, shinyCount);
-
+    // Side bets
+    const sideMult = computeSideBetMultiplier(playerHand);
+    mult *= sideMult;
     return parseFloat(mult.toFixed(2));
   }
 
-  // Gold bonus: flat addition per gold card (player + dealer)
   function computeGoldBonus(playerHand, dealerHand, bet) {
     const goldCards = [...playerHand, ...dealerHand].filter(c => c.effect === 'gold').length;
     return Math.floor(bet * 0.10 * goldCards);
   }
 
-  // ── HAND NAME ───────────────────────────────────────────────────────
   function getHandName(hand) {
     const score = handValue(hand);
     const threshold = bustThreshold(hand);
     if (isBust(hand)) return 'BUST';
     if (isBlackjack(hand)) return 'BLACKJACK!';
     if (isFiveCardCharlie(hand)) return 'MAIN DE 5';
+    const bets = evaluateSideBets(hand);
+    if (bets.includes('sevenset'))    return 'TRIPLE SEPT!';
+    if (bets.includes('threeofkind')) return 'BRELAN!';
+    if (bets.includes('straight3'))   return 'SUITE!';
+    if (bets.includes('flush3'))      return 'FLUSH!';
     if (score === threshold) return `${threshold} PARFAIT`;
     if (score >= threshold - 3) return 'FORTE';
     if (score >= 13) return 'MOYENNE';
     return 'FAIBLE';
   }
 
-  // ── GLASS EFFECT REVEAL ─────────────────────────────────────────────
-  // Returns the dealer hidden card if any glass card is in player hand
   function getGlassReveal(playerHand, dealerHand) {
-    const hasGlass = playerHand.some(c => c.effect === 'glass');
-    if (!hasGlass) return null;
+    if (!playerHand.some(c => c.effect === 'glass')) return null;
     return dealerHand.find(c => !c.faceUp) || null;
   }
 
-  // ── CANVAS TEXTURE GENERATION ────────────────────────────────────────
-  const EFFECT_COLORS = {
-    glass:    '#7ecfff',
-    shiny:    '#ff80ab',
-    negative: '#e74c3c',
-    gold:     '#f0d078',
-    multi:    '#c39bd3',
-  };
-  const STYLE_COLORS = {
-    retro:    '#f39c12',
-    graffiti: '#27ae60',
-    detailed: '#2980b9',
-  };
+  // ── CANVAS GENERATION ────────────────────────────────────────────────
+  const EFFECT_COLORS = { glass:'#7ecfff', shiny:'#ff80ab', negative:'#e74c3c', gold:'#f0d078', multi:'#c39bd3' };
+  const STYLE_COLORS  = { retro:'#f39c12', graffiti:'#27ae60', detailed:'#2980b9' };
 
-  function makeFaceCanvas(card, glassRevealed = false) {
+  function makeFaceCanvas(card) {
     const W = 256, H = 384;
     const cv = document.createElement('canvas');
     cv.width = W; cv.height = H;
     const ctx = cv.getContext('2d');
 
     const isRed = ['♥','♦'].includes(card.suit);
-    const rankColor = isRed ? '#c0392b' : '#1a1a2e';
+    const baseColor = isRed ? '#c0392b' : '#1a1a2e';
     const effectColor = card.effect ? EFFECT_COLORS[card.effect] : null;
     const styleColor  = card.style  ? STYLE_COLORS[card.style]   : null;
 
-    // ── Background ──
     _drawBackground(ctx, W, H, card);
-
-    // ── Border ──
     _drawBorder(ctx, W, H, effectColor, styleColor);
 
-    // ── Rank corners ──
-    // Displayed value (graffiti +2)
-    const displayRank = card.style === 'graffiti' ? _graffitiRank(card.rank) : card.rank;
-    const displayColor = card.effect === 'negative' ? '#e74c3c' : rankColor;
+    const displayRank  = card.style === 'graffiti' ? _graffitiRank(card.rank) : card.rank;
+    const displayColor = card.effect === 'negative' ? '#e74c3c' : baseColor;
 
-    ctx.font = 'bold 50px Georgia,serif';
-    ctx.fillStyle = displayColor;
-    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-    ctx.fillText(displayRank, 18, 12);
-    ctx.font = '34px serif';
-    ctx.fillStyle = displayColor;
-    ctx.fillText(card.suit, 22, 62);
-
-    ctx.save();
-    ctx.translate(W, H); ctx.rotate(Math.PI);
+    // Corner rank/suit
     ctx.font = 'bold 50px Georgia,serif'; ctx.fillStyle = displayColor;
     ctx.textAlign = 'left'; ctx.textBaseline = 'top';
     ctx.fillText(displayRank, 18, 12);
-    ctx.font = '34px serif'; ctx.fillStyle = displayColor;
-    ctx.fillText(card.suit, 22, 62);
+    ctx.font = '34px serif'; ctx.fillText(card.suit, 22, 62);
+    ctx.save(); ctx.translate(W, H); ctx.rotate(Math.PI);
+    ctx.font = 'bold 50px Georgia,serif'; ctx.fillStyle = displayColor;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.fillText(displayRank, 18, 12);
+    ctx.font = '34px serif'; ctx.fillText(card.suit, 22, 62);
     ctx.restore();
 
-    // ── Center suit / face art ──
-    if (card.effect === 'negative') {
-      // Draw suit with red slash
-      ctx.font = '110px serif'; ctx.fillStyle = rankColor;
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.globalAlpha = 0.5;
-      ctx.fillText(card.suit, W/2, H/2);
-      ctx.globalAlpha = 1;
-      // Red minus
-      ctx.fillStyle = '#e74c3c';
-      ctx.fillRect(W/2-28, H/2-5, 56, 10);
-    } else {
-      ctx.font = '110px serif'; ctx.fillStyle = displayColor;
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.globalAlpha = 0.88;
-      ctx.fillText(card.suit, W/2, H/2);
-      ctx.globalAlpha = 1;
-    }
+    // Center
+    _drawCenter(ctx, W, H, card, displayColor, baseColor);
 
-    // ── Face card label ──
+    // Face card label
     if (['J','Q','K'].includes(card.rank)) {
       const labels = {J:'VALET',Q:'DAME',K:'ROI'};
       ctx.font = 'italic bold 18px Georgia,serif';
@@ -241,213 +237,272 @@ const Cards = (() => {
       ctx.fillText(labels[card.rank], W/2, H-16);
     }
 
-    // ── Effect badge ──
-    if (card.effect) {
-      _drawEffectBadge(ctx, W, H, card.effect, effectColor);
-    }
-
-    // ── Style badge ──
-    if (card.style) {
-      _drawStyleBadge(ctx, W, H, card.style, styleColor);
-    }
-
-    // ── Glass reveal overlay ──
-    if (glassRevealed) {
-      _drawGlassReveal(ctx, W, H, card);
-    }
+    if (card.effect) _drawEffectOverlay(ctx, W, H, card.effect, effectColor);
+    if (card.style)  _drawStyleBadge(ctx, W, H, card.style, styleColor);
 
     return cv;
   }
 
+  function _drawCenter(ctx, W, H, card, displayColor, baseColor) {
+    switch(card.effect) {
+      case 'glass':
+        // Frosted glass — translucent layered look
+        ctx.fillStyle = 'rgba(126,207,255,0.08)';
+        ctx.fillRect(30, 90, W-60, H-180);
+        // Center suit with refraction shimmer
+        ctx.font = '100px serif'; ctx.fillStyle = displayColor;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.globalAlpha = 0.3; ctx.fillText(card.suit, W/2-3, H/2+3);
+        ctx.globalAlpha = 0.7; ctx.fillText(card.suit, W/2, H/2);
+        ctx.globalAlpha = 1;
+        // Horizontal light streak
+        const glassGrd = ctx.createLinearGradient(30, H/2-8, W-30, H/2-8);
+        glassGrd.addColorStop(0, 'transparent');
+        glassGrd.addColorStop(0.4, 'rgba(126,207,255,0.5)');
+        glassGrd.addColorStop(0.6, 'rgba(255,255,255,0.8)');
+        glassGrd.addColorStop(1, 'transparent');
+        ctx.fillStyle = glassGrd;
+        ctx.fillRect(30, H/2-8, W-60, 16);
+        break;
+
+      case 'shiny':
+        // Normal suit + sparkle stars
+        ctx.font = '100px serif'; ctx.fillStyle = displayColor;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.globalAlpha = 0.88; ctx.fillText(card.suit, W/2, H/2); ctx.globalAlpha = 1;
+        // Draw 8-pointed stars around suit
+        const starPositions = [[W/2-55,H/2-55],[W/2+52,H/2-50],[W/2-50,H/2+52],[W/2+55,H/2+55],[W/2,H/2-70]];
+        starPositions.forEach(([sx,sy],i) => {
+          ctx.fillStyle = '#ff80ab';
+          ctx.globalAlpha = 0.7 + (i%2)*0.3;
+          _drawStar(ctx, sx, sy, 8+i*2, 4+i);
+          ctx.globalAlpha = 1;
+        });
+        break;
+
+      case 'negative':
+        // Inverted colors — dark bg for suit
+        ctx.font = '100px serif';
+        ctx.fillStyle = baseColor;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.globalAlpha = 0.4; ctx.fillText(card.suit, W/2, H/2); ctx.globalAlpha = 1;
+        // Red X
+        ctx.strokeStyle = '#e74c3c'; ctx.lineWidth = 8;
+        ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(W/2-28, H/2-28); ctx.lineTo(W/2+28, H/2+28); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(W/2+28, H/2-28); ctx.lineTo(W/2-28, H/2+28); ctx.stroke();
+        break;
+
+      case 'gold':
+        // Gold sheen + suit
+        const goldGrd = ctx.createRadialGradient(W/2, H/2, 10, W/2, H/2, 80);
+        goldGrd.addColorStop(0, 'rgba(240,208,120,0.4)');
+        goldGrd.addColorStop(1, 'rgba(240,208,120,0)');
+        ctx.fillStyle = goldGrd; ctx.fillRect(0, 0, W, H);
+        ctx.font = '100px serif'; ctx.fillStyle = displayColor;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.globalAlpha = 0.88; ctx.fillText(card.suit, W/2, H/2); ctx.globalAlpha = 1;
+        // Gold coin icon top-right
+        ctx.beginPath(); ctx.arc(W-40, 50, 18, 0, Math.PI*2);
+        ctx.fillStyle = '#f0d078'; ctx.fill();
+        ctx.strokeStyle = '#b7770d'; ctx.lineWidth = 2; ctx.stroke();
+        ctx.font = 'bold 14px Georgia,serif'; ctx.fillStyle = '#7a5000';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('$', W-40, 50);
+        break;
+
+      case 'multi':
+        // Rainbow gradient suit
+        const rainbowColors = ['#e74c3c','#f39c12','#2ecc71','#3498db','#9b59b6'];
+        ctx.font = '100px serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        rainbowColors.forEach((col, i) => {
+          ctx.fillStyle = col;
+          ctx.globalAlpha = 0.25;
+          ctx.fillText(card.suit, W/2 + Math.cos(i/5*Math.PI*2)*6, H/2 + Math.sin(i/5*Math.PI*2)*6);
+        });
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = displayColor;
+        ctx.fillText(card.suit, W/2, H/2);
+        break;
+
+      default:
+        ctx.font = '110px serif'; ctx.fillStyle = displayColor;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.globalAlpha = 0.88; ctx.fillText(card.suit, W/2, H/2); ctx.globalAlpha = 1;
+    }
+  }
+
+  function _drawStar(ctx, cx, cy, outer, inner) {
+    ctx.beginPath();
+    for (let i = 0; i < 10; i++) {
+      const r = i % 2 === 0 ? outer : inner;
+      const angle = (i * Math.PI) / 5 - Math.PI / 2;
+      if (i === 0) ctx.moveTo(cx + r*Math.cos(angle), cy + r*Math.sin(angle));
+      else ctx.lineTo(cx + r*Math.cos(angle), cy + r*Math.sin(angle));
+    }
+    ctx.closePath(); ctx.fill();
+  }
+
   function _graffitiRank(rank) {
-    // Graffiti adds 2 to the displayed rank
     const numeric = { A:1, J:11, Q:12, K:13 };
     const n = numeric[rank] || parseInt(rank);
-    const newVal = n + 2;
-    if (newVal >= 11 && rank !== 'A') return ['J','Q','K','A'][Math.min(newVal-11,3)];
-    return String(newVal);
+    const v = n + 2;
+    if (v >= 14) return 'A'; if (v === 13) return 'K'; if (v === 12) return 'Q'; if (v === 11) return 'J';
+    return String(v);
   }
 
   function _drawBackground(ctx, W, H, card) {
-    // Subtle tint based on style
     let bg = '#f5ead0';
     if (card.style === 'retro')    bg = '#fff8e8';
     if (card.style === 'graffiti') bg = '#f0fff0';
     if (card.style === 'detailed') bg = '#eef4ff';
+    if (card.effect === 'negative') bg = '#fff0f0';
+    if (card.effect === 'glass')    bg = '#eef8ff';
 
     const grad = ctx.createLinearGradient(0, 0, W, H);
     grad.addColorStop(0, bg);
-    grad.addColorStop(1, _lighten(bg, -8));
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, W, H);
+    grad.addColorStop(1, _lighten(bg, -10));
+    ctx.fillStyle = grad; ctx.fillRect(0, 0, W, H);
 
-    // Retro: scanlines
     if (card.style === 'retro') {
       ctx.globalAlpha = 0.04;
-      for (let y = 0; y < H; y += 4) {
-        ctx.fillStyle = '#000';
-        ctx.fillRect(0, y, W, 2);
-      }
+      for (let y = 0; y < H; y += 4) { ctx.fillStyle='#000'; ctx.fillRect(0,y,W,2); }
       ctx.globalAlpha = 1;
     }
-    // Graffiti: paint splatters
     if (card.style === 'graffiti') {
-      ctx.globalAlpha = 0.07;
-      ['#27ae60','#e74c3c','#f39c12','#3498db'].forEach((c, i) => {
+      ctx.globalAlpha = 0.08;
+      ['#27ae60','#e74c3c','#f39c12','#3498db'].forEach((c,i) => {
         ctx.fillStyle = c;
-        ctx.beginPath();
-        ctx.arc(40+i*55, 180+Math.sin(i)*30, 18+i*4, 0, Math.PI*2);
-        ctx.fill();
+        ctx.beginPath(); ctx.arc(40+i*55, 180+Math.sin(i)*30, 18+i*4, 0, Math.PI*2); ctx.fill();
       });
       ctx.globalAlpha = 1;
     }
-    // Detailed: fine cross-hatch
     if (card.style === 'detailed') {
-      ctx.strokeStyle = 'rgba(41,128,185,0.06)'; ctx.lineWidth = 0.5;
+      ctx.strokeStyle = 'rgba(41,128,185,0.07)'; ctx.lineWidth = 0.5;
       for (let x = 0; x < W; x += 10) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
       for (let y = 0; y < H; y += 10) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+    }
+    if (card.effect === 'glass') {
+      // Glass: diagonal light lines
+      ctx.globalAlpha = 0.07;
+      ctx.strokeStyle = '#7ecfff'; ctx.lineWidth = 8;
+      for (let i = -H; i < W+H; i += 50) {
+        ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i+H,H); ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+    if (card.effect === 'negative') {
+      // Negative: subtle invert pattern
+      ctx.globalAlpha = 0.06;
+      ctx.fillStyle = '#e74c3c';
+      for (let y = 0; y < H; y += 20) { ctx.fillRect(0,y,W,10); }
+      ctx.globalAlpha = 1;
     }
   }
 
   function _drawBorder(ctx, W, H, effectColor, styleColor) {
-    // Outer gold border
     ctx.strokeStyle = '#c9a84c'; ctx.lineWidth = 5;
     ctx.strokeRect(7, 7, W-14, H-14);
-
-    // Effect colored inner border
     if (effectColor) {
-      ctx.strokeStyle = effectColor; ctx.lineWidth = 2;
+      ctx.strokeStyle = effectColor; ctx.lineWidth = 2.5;
       ctx.strokeRect(13, 13, W-26, H-26);
-      // Corner glows
-      const grd = ctx.createRadialGradient(14, 14, 0, 14, 14, 20);
-      grd.addColorStop(0, effectColor + '60');
-      grd.addColorStop(1, 'transparent');
-      ctx.fillStyle = grd; ctx.fillRect(0,0,40,40);
-      const grd2 = ctx.createRadialGradient(W-14, H-14, 0, W-14, H-14, 20);
-      grd2.addColorStop(0, effectColor + '60');
-      grd2.addColorStop(1, 'transparent');
-      ctx.fillStyle = grd2; ctx.fillRect(W-40,H-40,40,40);
+      [[14,14],[W-14,14],[14,H-14],[W-14,H-14]].forEach(([cx,cy]) => {
+        const grd = ctx.createRadialGradient(cx,cy,0,cx,cy,22);
+        grd.addColorStop(0, effectColor+'70'); grd.addColorStop(1,'transparent');
+        ctx.fillStyle = grd; ctx.fillRect(0,0,W,H);
+      });
     } else {
       ctx.strokeStyle = 'rgba(201,168,76,0.3)'; ctx.lineWidth = 1.5;
-      ctx.strokeRect(13, 13, W-26, H-26);
+      ctx.strokeRect(13,13,W-26,H-26);
     }
-
-    // Style colored tab at bottom
     if (styleColor) {
-      ctx.fillStyle = styleColor + '30';
-      ctx.fillRect(7, H-30, W-14, 23);
+      ctx.fillStyle = styleColor+'35';
+      ctx.fillRect(7, H-32, W-14, 25);
     }
   }
 
-  function _drawEffectBadge(ctx, W, H, effect, color) {
+  function _drawEffectOverlay(ctx, W, H, effect, color) {
     const LABELS = { glass:'◈ VERRE', shiny:'✦ BRILLANT', negative:'⊖ NÉGATIF', gold:'◉ OR', multi:'❋ MULTI' };
-    const label = LABELS[effect] || effect.toUpperCase();
-    ctx.font = 'bold 13px Space Mono, monospace';
+    const label = LABELS[effect];
+    ctx.font = 'bold 12px monospace';
     const tw = ctx.measureText(label).width;
-    const px = W/2 - tw/2 - 6, py = H - 28;
-    ctx.fillStyle = color + 'cc';
-    _roundRect(ctx, px, py, tw+12, 16, 3); ctx.fill();
-    ctx.fillStyle = '#fff';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const px = W/2-tw/2-7, py = H-30;
+    ctx.fillStyle = color+'cc'; _roundRect(ctx,px,py,tw+14,17,3); ctx.fill();
+    ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.textBaseline='middle';
     ctx.fillText(label, W/2, py+8);
   }
 
   function _drawStyleBadge(ctx, W, H, style, color) {
     const LABELS = { retro:'▶ RÉTRO', graffiti:'★ GRAFF', detailed:'◎ DÉTAIL' };
-    const label = LABELS[style] || style.toUpperCase();
-    ctx.font = 'bold 11px Space Mono, monospace';
-    ctx.fillStyle = color + 'aa';
+    const label = LABELS[style];
+    ctx.font = 'bold 10px monospace';
     const tw = ctx.measureText(label).width;
-    _roundRect(ctx, 12, H-46, tw+10, 13, 2); ctx.fill();
-    ctx.fillStyle = '#fff'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-    ctx.fillText(label, 17, H-40);
-  }
-
-  function _drawGlassReveal(ctx, W, H, card) {
-    // Frosted glass overlay with actual card value
-    ctx.fillStyle = 'rgba(126,207,255,0.18)';
-    ctx.fillRect(0, 0, W, H);
-    // Show true value prominently
-    ctx.font = 'bold 38px Georgia,serif';
-    ctx.fillStyle = '#7ecfff';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.shadowColor = '#7ecfff'; ctx.shadowBlur = 15;
-    ctx.fillText(card.rank + card.suit, W/2, H/2 - 12);
-    ctx.shadowBlur = 0;
-    ctx.font = '11px Space Mono, monospace';
-    ctx.fillStyle = '#7ecfff';
-    ctx.fillText('VERRE · RÉVÉLÉ', W/2, H/2 + 30);
+    ctx.fillStyle = color+'aa'; _roundRect(ctx,12,H-48,tw+10,14,2); ctx.fill();
+    ctx.fillStyle='#fff'; ctx.textAlign='left'; ctx.textBaseline='middle';
+    ctx.fillText(label, 17, H-41);
   }
 
   function makeBackCanvas() {
-    const W = 256, H = 384;
-    const cv = document.createElement('canvas');
-    cv.width = W; cv.height = H;
-    const ctx = cv.getContext('2d');
-    ctx.fillStyle = '#0d1a3a'; ctx.fillRect(0, 0, W, H);
-    ctx.strokeStyle = '#c9a84c'; ctx.lineWidth = 6; ctx.strokeRect(8,8,W-16,H-16);
-    ctx.strokeStyle = 'rgba(201,168,76,0.4)'; ctx.lineWidth = 2; ctx.strokeRect(16,16,W-32,H-32);
-    ctx.strokeStyle = 'rgba(201,168,76,0.18)'; ctx.lineWidth = 1;
-    const step = 24;
-    for (let x = -H; x < W+H; x+=step) {
-      ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x+H,H); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x-H,H); ctx.stroke();
+    const W=256,H=384;
+    const cv=document.createElement('canvas'); cv.width=W; cv.height=H;
+    const ctx=cv.getContext('2d');
+    ctx.fillStyle='#0d1a3a'; ctx.fillRect(0,0,W,H);
+    ctx.strokeStyle='#c9a84c'; ctx.lineWidth=6; ctx.strokeRect(8,8,W-16,H-16);
+    ctx.strokeStyle='rgba(201,168,76,0.4)'; ctx.lineWidth=2; ctx.strokeRect(16,16,W-32,H-32);
+    ctx.strokeStyle='rgba(201,168,76,0.18)'; ctx.lineWidth=1;
+    for(let x=-H;x<W+H;x+=24){
+      ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x+H,H);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x-H,H);ctx.stroke();
     }
-    ctx.save(); ctx.translate(W/2,H/2); ctx.rotate(Math.PI/4);
-    ctx.fillStyle='rgba(201,168,76,0.15)'; ctx.fillRect(-28,-28,56,56);
-    ctx.strokeStyle='#c9a84c'; ctx.lineWidth=2; ctx.strokeRect(-28,-28,56,56);
+    ctx.save();ctx.translate(W/2,H/2);ctx.rotate(Math.PI/4);
+    ctx.fillStyle='rgba(201,168,76,0.15)';ctx.fillRect(-28,-28,56,56);
+    ctx.strokeStyle='#c9a84c';ctx.lineWidth=2;ctx.strokeRect(-28,-28,56,56);
     ctx.restore();
-    ctx.font='bold italic 28px Georgia,serif'; ctx.fillStyle='rgba(201,168,76,0.7)';
-    ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillText('BJ', W/2, H/2);
+    ctx.font='bold italic 28px Georgia,serif';ctx.fillStyle='rgba(201,168,76,0.7)';
+    ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('BJ',W/2,H/2);
     return cv;
   }
 
-  // ── GLASS-REVEALED BACK CANVAS ──────────────────────────────────────
-  // When player has a glass card: dealer's hidden card back shows its value
   function makeGlassBackCanvas(card) {
-    const cv = makeBackCanvas();
-    const W = 256, H = 384;
-    const ctx = cv.getContext('2d');
-    // Frosted overlay
-    ctx.fillStyle = 'rgba(126,207,255,0.22)';
-    ctx.fillRect(0, 0, W, H);
-    // Value
-    ctx.font = 'bold 40px Georgia,serif';
-    ctx.fillStyle = '#7ecfff';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.shadowColor = '#7ecfff'; ctx.shadowBlur = 18;
-    ctx.fillText(card.rank + card.suit, W/2, H/2);
-    ctx.shadowBlur = 0;
+    const cv=makeBackCanvas();
+    const W=256,H=384;
+    const ctx=cv.getContext('2d');
+    ctx.fillStyle='rgba(126,207,255,0.25)'; ctx.fillRect(0,0,W,H);
+    // Diagonal glass streaks
+    ctx.strokeStyle='rgba(200,240,255,0.3)'; ctx.lineWidth=12;
+    for(let i=-H;i<W+H;i+=60){ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i+H,H);ctx.stroke();}
+    ctx.font='bold 42px Georgia,serif';ctx.fillStyle='#7ecfff';
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.shadowColor='#7ecfff';ctx.shadowBlur=20;
+    ctx.fillText(card.rank+card.suit,W/2,H/2);
+    ctx.shadowBlur=0;
     return cv;
   }
 
-  // ── HELPERS ─────────────────────────────────────────────────────────
   function _roundRect(ctx, x, y, w, h, r) {
     ctx.beginPath();
-    ctx.moveTo(x+r, y);
-    ctx.lineTo(x+w-r, y); ctx.arcTo(x+w, y, x+w, y+r, r);
-    ctx.lineTo(x+w, y+h-r); ctx.arcTo(x+w, y+h, x+w-r, y+h, r);
-    ctx.lineTo(x+r, y+h); ctx.arcTo(x, y+h, x, y+h-r, r);
-    ctx.lineTo(x, y+r); ctx.arcTo(x, y, x+r, y, r);
+    ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.arcTo(x+w,y,x+w,y+r,r);
+    ctx.lineTo(x+w,y+h-r); ctx.arcTo(x+w,y+h,x+w-r,y+h,r);
+    ctx.lineTo(x+r,y+h); ctx.arcTo(x,y+h,x,y+h-r,r);
+    ctx.lineTo(x,y+r); ctx.arcTo(x,y,x+r,y,r);
     ctx.closePath();
   }
 
   function _lighten(hex, amount) {
     const num = parseInt(hex.replace('#',''), 16);
-    const r = Math.min(255, (num>>16) + amount);
-    const g = Math.min(255, ((num>>8)&0xff) + amount);
-    const b = Math.min(255, (num&0xff) + amount);
+    const r=Math.min(255,(num>>16)+amount);
+    const g=Math.min(255,((num>>8)&0xff)+amount);
+    const b=Math.min(255,(num&0xff)+amount);
     return `rgb(${r},${g},${b})`;
   }
 
   return {
-    EFFECTS, STYLES,
-    assignCardExtras,
-    computeCardValue, handValue, bustThreshold, blackjackScore,
-    isBlackjack, isBust, isFiveCardCharlie,
-    dealerThreshold,
-    computeMultiplier, computeGoldBonus,
+    EFFECTS, STYLES, SIDE_BETS,
+    assignCardExtras, computeCardValue, handValue,
+    bustThreshold, blackjackScore, isBlackjack, isBust, isFiveCardCharlie,
+    dealerThreshold, computeMultiplier, computeGoldBonus,
+    evaluateSideBets, computeSideBetMultiplier,
     getHandName, getGlassReveal,
     makeFaceCanvas, makeBackCanvas, makeGlassBackCanvas,
   };
