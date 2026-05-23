@@ -2,7 +2,7 @@
 //  VIEW — DOM, tooltip, deck viewer, history panel
 // ============================================================
 
-const View = (() => {
+const View = window.View = (() => {
   let tooltipTimeout = null;
 
   // ── MAIN UPDATE ──────────────────────────────────────────────────────
