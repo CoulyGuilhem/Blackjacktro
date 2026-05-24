@@ -176,6 +176,12 @@ const View = window.View = (() => {
     const s = Model.get();
     const container = _e('deck-viewer-cards');
     container.innerHTML = '';
+    // Fallback: if fullDeck not populated yet, use a fresh reference
+    if (!s.fullDeck || s.fullDeck.length === 0) {
+      container.innerHTML = '<div style="text-align:center;color:#555;padding:40px;font-size:11px;letter-spacing:2px;">DECK NON DISPONIBLE</div>';
+      _e('deck-viewer').classList.add('show');
+      return;
+    }
 
     const suitOrder = { '♠':0,'♥':1,'♦':2,'♣':3 };
     const rankOrder = { A:1,2:2,3:3,4:4,5:5,6:6,7:7,8:8,9:9,10:10,J:11,Q:12,K:13 };
