@@ -26,7 +26,7 @@ const Cards = window.Cards = (() => {
     straight3:  { id:'straight3',  label:'SUITE',       icon:'5-6-7', color:'#3498db', mult:1.8,  desc:'3 cartes consécutives (ex: 7-8-9)' },
     threeofkind:{ id:'threeofkind',label:'BRELAN',      icon:'777', color:'#9b59b6', mult:2.5,  desc:'3 cartes de même valeur' },
     sevenset:   { id:'sevenset',   label:'TRIPLE 7',    icon:'777', color:'#f0d078', mult:4.0,  desc:'3 cartes 7 exactement' },
-    suitedpair: { id:'suitedpair', label:'PAIRE SUIT.', icon:'♠♠',  color:'#27ae60', mult:1.3,  desc:'2 cartes de même couleur ET même symbole (♠♠, ♥♥...)' },
+    suitedpair: { id:'suitedpair', label:'PAIRE COLOR.', icon:'♠♠',  color:'#27ae60', mult:1.3,  desc:'2 cartes de même couleur ET même symbole (♠♠, ♥♥...)' },
     perfectpair:{ id:'perfectpair',label:'PAIRE PERF.', icon:'AA',  color:'#ff80ab', mult:2.0,  desc:'2 cartes identiques (même rang ET même couleur)' },
     coloredBJ:  { id:'coloredBJ',  label:'BJ COLORÉ',  icon:'♥A',  color:'#f0d078', mult:1.2,  desc:'Blackjack avec un As et une figure de même couleur' },
   };
@@ -65,20 +65,25 @@ const Cards = window.Cards = (() => {
     };
     const isRed = c => ['♥','♦'].includes(c.suit);
 
-    // ── Perfect pair: exactly 2 cards, same rank AND same suit ──────────
-    if (faceUp.length === 2) {
-      const [a,b] = faceUp;
+    // ── Perfect pair: 2 premières cartes, même rang ET même symbole ──────
+    // Ex: 7♦ + 7♦
+    if (faceUp.length >= 2) {
+      const [a,b] = faceUp.slice(0,2);
       if (a.rank === b.rank && a.suit === b.suit) triggered.push('perfectpair');
     }
 
-    // ── Suited pair: exactly 2 cards, same suit (different rank) ────────
-    // Requires EXACTLY the first two cards (the hand's initial 2)
+    // ── Suited pair (paire suitée): 2 premières cartes, même rang, même symbole différent ──
+    // En casino : "suited pair" = même RANG + même SYMBOLE → c'est la perfect pair.
+    // "Colored pair" = même RANG + même couleur (rouge/rouge ou noir/noir).
+    // On implémente : même RANG + même couleur (mais symboles potentiellement différents).
+    // Ex: 7♦ + 7♥ (tous les deux rouges, même rang)
     if (faceUp.length >= 2) {
-      const first2 = faceUp.slice(0, 2);
-      const sameSuit = first2.every(c => c.suit === first2[0].suit);
-      const sameRank = first2.every(c => c.rank === first2[0].rank);
-      if (sameSuit && !sameRank) triggered.push('suitedpair');
-      if (sameSuit && sameRank)  triggered.push('perfectpair');
+      const [a,b] = faceUp.slice(0,2);
+      const sameRank  = a.rank === b.rank;
+      const sameColor = isRed(a) === isRed(b);
+      const sameSuit  = a.suit === b.suit;
+      // Colored pair: même rang, même couleur, symboles différents (sinon c'est perfectpair)
+      if (sameRank && sameColor && !sameSuit) triggered.push('suitedpair');
     }
 
     // ── Flush: 3+ cards of the exact same suit symbol ────────────────────
