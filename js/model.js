@@ -36,6 +36,7 @@ const Model = window.Model = (() => {
   // ── Initial state ────────────────────────────────────────────────────
   const state = {
     deck: [],
+    fullDeck: [],
     playerHand: [],
     dealerHand: [],
     balance: 1000,
@@ -55,7 +56,11 @@ const Model = window.Model = (() => {
   };
 
   // ── Deck ─────────────────────────────────────────────────────────────
-  function refillDeck() { state.deck = shuffle(createDeck()); }
+  function refillDeck() {
+    const fresh = createDeck();
+    state.fullDeck = fresh;
+    state.deck = shuffle([...fresh]);
+  }
   function drawCard()   {
     if (state.deck.length < 10) refillDeck();
     return { ...state.deck.pop() };
