@@ -63,6 +63,7 @@ const Cards = window.Cards = (() => {
       if (c.rank === 'K')  return 13;
       return parseInt(c.rank);
     };
+    const isRed = c => ['♥','♦'].includes(c.suit);
 
     // ── Perfect pair: exactly 2 cards, same rank AND same suit ──────────
     if (faceUp.length === 2) {
